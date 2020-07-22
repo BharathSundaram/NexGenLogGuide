@@ -1,0 +1,28 @@
+{
+	"Setting":[
+		{
+			"BufferedLines":2
+		}
+	],
+
+	"Oneliner": [
+	{
+		"Regex":"Firmware Version: ",
+		"ShowLine":"false",
+		"ReadUpDownLines":"UP 2"
+	},
+	{
+		"Regex":"IMW version: ",
+		"ShowLine":"false"
+	},
+	{
+		"Regex":"JVM version: ",
+		"ShowLine":"false"
+	},
+
+	{
+		"Regex":"Setting initial system date from TDT of dvb:",
+		"ShowLine":"false"
+	}
+	]
+}

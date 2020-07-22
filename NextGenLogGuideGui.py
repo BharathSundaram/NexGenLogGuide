@@ -13,7 +13,9 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QFileDialog, QAction, QTreeWidgetItem
 from PyQt5.QtGui import QIcon
 from utils import *
+from PyQt5.QtCore import QThreadPool
 
+__filename__ = "NextGenLogGuideGui.py"
 __author__ = "Bharath Shanmugasundaram"
 __license__ = "GPL"
 __version__ = "1.0.0"
@@ -112,7 +114,7 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuHelp.menuAction())
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-        logger.debug(__name__,"setup called")
+        logger.debug(__filename__,"setup called")
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -145,30 +147,70 @@ class Ui_MainWindow(object):
         self.treeWidget.header().setStretchLastSection(False)
         self.treeWidget.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
 
+        self.read_config_file("LogConfig.json")
+        self.threadpool = QThreadPool()
+        logger.info("Available with maximum %d threads" % self.threadpool.maxThreadCount())
+
     def OpenFileDialog(self):
-        file_name, filter = QFileDialog.getOpenFileName(None, 'Open NextGen Log files',
-                              'c:\\', "NextGen Log files (*.log)")
-        
-        logger.debug(__name__,'file name :',file_name)
-        if( file_name is not None):
+        try :
+            file_name, filter = QFileDialog.getOpenFileName(None, 'Open NextGen Log files',
+                                'c:\\', "NextGen Log files (*.log)")
+            
+            logger.debug(__filename__,'file name :',file_name)
             path, filename = os.path.split(file_name)
             self.lineEdit.setText(file_name)
             fsize = os.path.getsize(file_name)
             fsizestr = str(int(fsize/1024)) + ' KB'
+            self.treeWidget.clear()
             QTreeWidgetItem(self.treeWidget, [filename, fsizestr])
-            
+        except FileNotFoundError:
+            logger.debug(__filename__,'No file selected')
 
-        else:
-            logger.debug(__name__,'No file selected')
+    def OpenFolderDialog(self,MainWindow):
+        try :
+            folder_name = str(QFileDialog.getExistingDirectory(None, "Select NextGenLog Directory"))
+            logger.debug(__filename__,folder_name)
+            self.lineEdit.setText(folder_name)
+            if folder_name =='':
+                return
 
-    def OpenFolderDialog(self):
-        folder_name = str(QFileDialog.getExistingDirectory(None, "Select Directory"))
+            MainWindow.statusBar().showMessage('Fetching file from folder. Please wait...')
+            files_list = get_files_from_dir(folder_name,".log")
+            self.treeWidget.clear()
+            for file in files_list:
+                fsize = os.path.getsize(file)
+                fsizestr = str(int(fsize/1024)) + ' KB'
+                path, filename = os.path.split(file)
+                QTreeWidgetItem(self.treeWidget, [filename, fsizestr])
 
-    def add_signals(self):
+            MainWindow.statusBar().showMessage(str('Fetching file from folder completed. Total file(s) '+ 'files_list.count'))
+
+            self.create_thread(files_list,[])
+        except FileNotFoundError:
+            logger.debug(__filename__,'No folder selected')
+
+    def add_signals(self,MainWindow):
         self.pushButton.clicked.connect(self.OpenFileDialog)
-        self.pushButton_2.clicked.connect(self.OpenFolderDialog)
+        self.pushButton_2.clicked.connect(lambda: self.OpenFolderDialog(MainWindow))
         self.actionOpenFile.triggered.connect(self.OpenFileDialog)
-        self.actionOpenFolder.triggered.connect(self.OpenFolderDialog)
+        self.actionOpenFolder.triggered.connect(lambda: self.OpenFolderDialog(MainWindow))
 
+    def process_log_files(self, file_list, log_info_list):
+        for file in file_list:
+            logger.info(file)
 
+    def read_config_file(self,filename):
+        self.status, self.onliner, self.settings = ReadConfigfromJson(filename)
+
+    def thread_complete(self):
+        print("THREAD COMPLETE!")
+
+    def create_thread(self,file_list, log_info_list):
+        # Pass the function to execute
+        worker = JobThread(self.process_log_files,file_list,log_info_list)
+        worker.signals.finished.connect(self.thread_complete)
+        
+        # Execute
+        self.threadpool.start(worker) 
+        logger.info("Thread created for processing files")
 
