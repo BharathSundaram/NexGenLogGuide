@@ -12,11 +12,11 @@
 		"ReadUpDownLines":"UP 2"
 	},
 	{
-		"Regex":"IMW version: ",
+		"Regex":"imw.init.boot - IMW version: ",
 		"ShowLine":"false"
 	},
 	{
-		"Regex":"JVM version: ",
+		"Regex":"imw.init.boot - JVM version: ",
 		"ShowLine":"false"
 	},
 
