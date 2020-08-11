@@ -2,8 +2,8 @@
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QObject, pyqtSignal, pyqtSlot, QRunnable
 from setup_logger import logger
-import os,sys,json,time,re
-
+from NextGenLogGuide import ui
+import os,sys,json,time,re,traceback
 
 __filename__ = "utils.py"
 __author__ = "Bharath Shanmugasundaram"
@@ -25,41 +25,34 @@ def get_files_from_dir(path,fext):
 
 class WorkerSignals(QObject):
     finished = pyqtSignal()
+    send_data = pyqtSignal(tuple)
     error = pyqtSignal(tuple)
 
 class JobThread(QRunnable):
-    
-    signals = WorkerSignals()
-    
-    def __init__(self,fn,file_list,log_info_list):
-        super().__init__()
+    def __init__(self,fn,file_list):
+        super(JobThread, self).__init__()
         self.fn = fn
         self.file_list = file_list
-        self.log_info_list = log_info_list
         self.is_paused = False
         self.is_killed = False
+        self.signals = WorkerSignals()
         logger.info(self)
         
     @pyqtSlot()
     def run(self):
         try:
-            self.fn(self.file_list, self.log_info_list)
+            self.isalive = True    
+            self.fn(self.file_list, self.signals.send_data)
         except:
             traceback.print_exc()
             exctype, value = sys.exc_info()[:2]
             self.signals.error.emit((exctype, value, traceback.format_exc()))
+        else:
+            pass
         finally:
             self.signals.finished.emit()  # Done
             
 
-    def pause(self):
-        self.is_paused = True
-        
-    def resume(self):
-        self.is_paused = False
-        
-    def kill(self):
-        self.is_killed = True
 
 def ReadConfigfromJson(filename):
     try:
@@ -96,7 +89,7 @@ def extract_onliner_info(regex_str,filename):
     logger.info(__filename__,'Time taken:',seconds)	
     regex=re.compile(regex_str,re.I)
     lines=[]
-    with open(filename) as filedata:
+    with open(filename,'r') as filedata:
         count = 0
         while True: 
             line = filedata.readline() 
@@ -111,3 +104,4 @@ def extract_onliner_info(regex_str,filename):
     seconds = time.time()
     logger.info(__filename__,'Time taken:',seconds,'line parsed', count)
     return None if not lines else lines
+

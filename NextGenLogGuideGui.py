@@ -10,22 +10,27 @@
 import os
 from setup_logger import logger
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QFileDialog, QAction, QTreeWidgetItem
+from PyQt5.QtWidgets import QMainWindow,QFileDialog,QAction,QTreeWidgetItem,QProgressBar,QMessageBox,QLabel
 from PyQt5.QtGui import QIcon
 from utils import *
-from PyQt5.QtCore import QThreadPool
+from PyQt5.QtCore import QThreadPool,Qt,QTimer
+from GccGraph import Ui_GccGraph
 
 __filename__ = "NextGenLogGuideGui.py"
 __author__ = "Bharath Shanmugasundaram"
 __version__ = "1.0.0"
 
-class Ui_MainWindow(object):
+class Ui_MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setupUi()    
+        self.add_signals()
       
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
+    def setupUi(self):
+        self.setObjectName("MainWindow")
         width,height = get_screen_resolution()
-        MainWindow.resize(width-5, int(height - (height*(15/100))))# 90 % of screen height
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.resize(width-5, int(height - (height*(15/100))))# 90 % of screen height
+        self.centralwidget = QtWidgets.QWidget(self)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout_2 = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout_2.setObjectName("gridLayout_2")
@@ -87,35 +92,35 @@ class Ui_MainWindow(object):
         self.lineEdit.setObjectName("lineEdit")
         self.gridLayout.addWidget(self.lineEdit, 0, 2, 1, 1)
         self.gridLayout_2.addLayout(self.gridLayout, 1, 0, 1, 2)
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar()
         self.menubar.setGeometry(QtCore.QRect(0, 0, 807, 21))
         self.menubar.setObjectName("menubar")
         self.menuOpenfile = QtWidgets.QMenu(self.menubar)
         self.menuOpenfile.setObjectName("menuOpenfile")
         self.menuHelp = QtWidgets.QMenu(self.menubar)
         self.menuHelp.setObjectName("menuHelp")
-        self.menuOptions = QtWidgets.QMenu(self.menubar)
+        self.menuOptions = QtWidgets.QMenu()
         self.menuOptions.setObjectName("menuOptions")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar()
         self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
-        self.actionOpenFile = QtWidgets.QAction(MainWindow)
+        self.setStatusBar(self.statusbar)
+        self.actionOpenFile = QtWidgets.QAction()
         self.actionOpenFile.setObjectName("actionOpenFile")
-        self.actionOpenFolder = QtWidgets.QAction(MainWindow)
+        self.actionOpenFolder = QtWidgets.QAction()
         self.actionOpenFolder.setObjectName("actionOpenFolder")
-        self.actionAbout = QtWidgets.QAction(MainWindow)
+        self.actionAbout = QtWidgets.QAction()
         self.actionAbout.setObjectName("actionAbout")
-        self.actionFull_GCC_Graph = QtWidgets.QAction(MainWindow)
+        self.actionFull_GCC_Graph = QtWidgets.QAction()
         self.actionFull_GCC_Graph.setObjectName("actionFull_GCC_Graph")
-        self.actionParse_Log = QtWidgets.QAction(MainWindow)
+        self.actionParse_Log = QtWidgets.QAction()
         self.actionParse_Log.setObjectName("actionParse_Log")
-        self.actionRecentFiles = QtWidgets.QAction(MainWindow)
+        self.actionRecentFiles = QtWidgets.QAction()
         self.actionRecentFiles.setObjectName("actionRecentFiles")
-        self.actionSaveReport = QtWidgets.QAction(MainWindow)
+        self.actionSaveReport = QtWidgets.QAction()
         self.actionSaveReport.setObjectName("actionSaveReport")
-        self.actionQuit = QtWidgets.QAction(MainWindow)
+        self.actionQuit = QtWidgets.QAction()
         self.actionQuit.setObjectName("actionQuit")
         self.menuOpenfile.addAction(self.actionOpenFile)
         self.menuOpenfile.addAction(self.actionOpenFolder)
@@ -127,35 +132,30 @@ class Ui_MainWindow(object):
         self.menuOptions.addAction(self.actionFull_GCC_Graph)
         self.menuOptions.addAction(self.actionParse_Log)
         self.menubar.addAction(self.menuOpenfile.menuAction())
-        self.menubar.addAction(self.menuOptions.menuAction())
+        #self.menubar.addAction(self.menuOptions.menuAction())
         self.menubar.addAction(self.menuHelp.menuAction())
-        
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
         logger.debug(__filename__,"setup called")
+        
+        self.setWindowTitle((str ( 'NexGenLogGuide ' +'-' + __version__)))
+        self.label.setText("List of files")
+        self.label_2.setText("Initial log information")
+        self.pushButton.setText("Open File")
+        self.pushButton_2.setText("Open Folder")
+        self.menuOpenfile.setTitle("File")
+        self.menuHelp.setTitle("Help")
+        self.menuOptions.setTitle("Options")
+        self.actionOpenFile.setText("OpenFile")
+        self.actionOpenFolder.setText("OpenFolder")
+        self.actionAbout.setText("About")
+        self.actionFull_GCC_Graph.setText("Full GCC Graph")
+        self.actionParse_Log.setText("Parse Log")
+        self.actionRecentFiles.setText("RecentFiles")
+        self.actionSaveReport.setText("SaveReport")
+        self.actionQuit.setText("Quit")
 
-    def retranslateUi(self, MainWindow):
-        _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", str ( 'NexGenLogGuide ' +'-' + __version__)))
-        self.label.setText(_translate("MainWindow", "List of files"))
-        self.label_2.setText(_translate("MainWindow", "Initial log information"))
-        self.pushButton.setText(_translate("MainWindow", "Open File"))
-        self.pushButton_2.setText(_translate("MainWindow", "Open Folder"))
-        self.menuOpenfile.setTitle(_translate("MainWindow", "File"))
-        self.menuHelp.setTitle(_translate("MainWindow", "Help"))
-        self.menuOptions.setTitle(_translate("MainWindow", "Options"))
-        self.actionOpenFile.setText(_translate("MainWindow", "OpenFile"))
-        self.actionOpenFolder.setText(_translate("MainWindow", "OpenFolder"))
-        self.actionAbout.setText(_translate("MainWindow", "About"))
-        self.actionFull_GCC_Graph.setText(_translate("MainWindow", "Full GCC Graph"))
-        self.actionParse_Log.setText(_translate("MainWindow", "Parse Log"))
-        self.actionRecentFiles.setText(_translate("MainWindow", "RecentFiles"))
-        self.actionSaveReport.setText(_translate("MainWindow", "SaveReport"))
-        self.actionQuit.setText(_translate("MainWindow", "Quit"))
+        # Till above it was generated by pyuic5.exe
 
-        # Till this it was generated by pyuic5.exe
-
-        MainWindow.statusBar().showMessage('Ready')
+        self.statusBar().showMessage('Ready')
         self.lineEdit.setReadOnly(True)
         self.actionOpenFile.setToolTip('Open NexGen Log File for parsing')
         self.actionOpenFolder.setToolTip('Open folder contains Log File(s) for parsing')
@@ -178,41 +178,55 @@ class Ui_MainWindow(object):
         bfont.setPointSizeF(10)
         self.textBrowser.setFont(bfont)
 
+        self.status = self.statusBar()
+        self.progress = QProgressBar()
+        self.status.addPermanentWidget(self.progress)
+
         self.read_config_file('LogConfig.json')
         if (self.status == True):
              self.regex =  get_regex_from_list(self.onliner)
         else:
             logger.error(__file__,'Failed to read regex')
-            MainWindow.statusBar().showMessage('Error reading LogConfig.json. Please check')
+            self.statusBar().showMessage('Error reading LogConfig.json. Please check')
 
         self.threadpool = QThreadPool()
         logger.info("Available with maximum %d threads" % self.threadpool.maxThreadCount())
 
+        #Initialze the class varibles
+        self.terminate_active_thread = False
+        self.worker = None
+        self.lbl = None
+
     def OpenFileDialog(self):
         try :
-            file_name, filter = QFileDialog.getOpenFileName(None, 'Open NextGen Log files',
+            file_name, filter = QFileDialog.getOpenFileName(self, 'Open NextGen Log files',
                                 'c:\\', "NextGen Log files (*.log)")
             
             logger.debug(__filename__,'file name :',file_name)
             path, filename = os.path.split(file_name)
-            self.lineEdit.setText(file_name)
+            self.lineEdit.setText(os.path.dirname(file_name))
             fsize = os.path.getsize(file_name)
             fsizestr = str(int(fsize/1024)) + ' KB'
             self.treeWidget.clear()
             QTreeWidgetItem(self.treeWidget, ['1',filename, fsizestr])
+            self.statusBar().showMessage('processing file. Please wait...')
+            self.progress.setMaximum(1)
+            self.textBrowser.clear()
             self.create_thread([file_name],[])
         except FileNotFoundError:
             logger.debug(__filename__,'No file selected')
 
-    def OpenFolderDialog(self,MainWindow):
+    def OpenFolderDialog(self):
         try :
-            folder_name = str(QFileDialog.getExistingDirectory(None, "Select NextGenLog Directory"))
+            folder_name = QFileDialog.getExistingDirectory(self, "Select NextGenLog Directory")
             logger.debug(__filename__,folder_name)
-            self.lineEdit.setText(folder_name)
+            self.lineEdit.setText(str(folder_name))
+
             if folder_name =='':
                 return
-
-            MainWindow.statusBar().showMessage('Fetching file from folder. Please wait...')
+            
+            self.textBrowser.clear()
+            self.statusBar().showMessage('Fetching file from folder. Please wait...')
             files_list = get_files_from_dir(folder_name,".log")
             self.treeWidget.clear()
             count = 0
@@ -221,31 +235,51 @@ class Ui_MainWindow(object):
                 fsizestr = str(int(fsize/1024)) + ' KB'
                 path, filename = os.path.split(file)
                 count = count + 1
-                QTreeWidgetItem(self.treeWidget, [str(count),filename, fsizestr])
-            MainWindow.statusBar().showMessage(f"Fetching file from folder completed. Total file(s): {len(files_list)}")
+                item = QTreeWidgetItem(self.treeWidget, [str(count),filename, fsizestr])
+                item.setData(0,Qt.UserRole,file)
+            self.statusBar().showMessage(f"Fetching file from folder completed. Total file(s): {len(files_list)}")
+            self.progress.setMaximum(count)
             self.create_thread(files_list,[])
         except FileNotFoundError:
             logger.debug(__filename__,'No folder selected')
 
-    def add_signals(self,MainWindow):
+    def add_signals(self):
         self.pushButton.clicked.connect(self.OpenFileDialog)
-        self.pushButton_2.clicked.connect(lambda: self.OpenFolderDialog(MainWindow))
+        #self.pushButton.clicked.connect(self.create_thread([],[]))
+        self.pushButton_2.clicked.connect(self.OpenFolderDialog)
         self.actionOpenFile.triggered.connect(self.OpenFileDialog)
-        self.actionOpenFolder.triggered.connect(lambda: self.OpenFolderDialog(MainWindow))
+        self.actionOpenFolder.triggered.connect(self.OpenFolderDialog)
+        self.actionQuit.triggered.connect(self.closeEvent)
+        self.actionSaveReport.triggered.connect(self.file_save)
+        self.actionFull_GCC_Graph.triggered.connect(self.open_GccGraph)
+        # Connect the contextmenu
+        self.treeWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.treeWidget.customContextMenuRequested.connect(self.menuContextTree)
+        self.treeWidget.itemSelectionChanged.connect(self.showfilename)
 
-    def process_log_files(self, file_list, log_info_list):
+    def process_log_files(self, file_list, fn_send_data):
+        print("Thread started")
+        logger.info(__filename__,"Thread started")
+        count = 0
         for file in file_list:
+            if True == self.terminate_active_thread:
+                print("Terminate the thread")
+                logger.info(__filename__,"Terminate the thread")
+                break
+            count = count + 1
+            fn_send_data.emit(('file',file,count))
             logger.info(file)
             filecontent = extract_onliner_info(self.regex,file)
-            self.textBrowser.append(file)
-            self.textBrowser.append('='*len(file))
+            fn_send_data.emit(('data',file))
+            fn_send_data.emit(('data','='*len(file)))
             if(filecontent is not None):
                 for item in filecontent: 
-                    self.textBrowser.append(item)
+                    fn_send_data.emit(('data',item))
             else:
-                self.textBrowser.append("<font color=red size=9>No data available to present for this file</font>")
+                fn_send_data.emit(('data',"<font color=red size=9>No data available to present for this file</font>"))
             
-            self.textBrowser.append("************END OF FILE**********\n")
+            fn_send_data.emit(('data',"************END OF FILE**********\n"))
+        return 'done'
 
     def read_config_file(self,filename):
         self.status, self.onliner, self.settings = ReadConfigfromJson(filename)
@@ -253,13 +287,121 @@ class Ui_MainWindow(object):
 
     def thread_complete(self):
         print("THREAD COMPLETE!")
+        self.worker.isalive = False
+        self.worker.signals = None
+        self.worker = None
+        self.statusBar().showMessage('Files processing Completed')
+
+    def show_data(self,d_tuple):
+        if(d_tuple[0]=='file'):
+            self.statusBar().showMessage('processing file:{}'.format(d_tuple[1]))
+            self.progress.setValue(d_tuple[2])
+        elif(d_tuple[0]=='data'):
+            self.textBrowser.append(d_tuple[1])
+        else:
+            logger.error("Invalid- Not expected")
+
+    def show_error(self,d_tuple):
+        print(d_tuple)
+        logger.error(__filename__,d_tuple)
 
     def create_thread(self,file_list, log_info_list):
         # Pass the function to execute
-        worker = JobThread(self.process_log_files,file_list,log_info_list)
-        worker.signals.finished.connect(self.thread_complete)
+        self.worker = JobThread(self.process_log_files,file_list)
+        self.worker.signals.finished.connect(self.thread_complete)
+        self.worker.signals.send_data.connect(self.show_data)
+        self.worker.signals.error.connect(self.show_error)
         
         # Execute
-        self.threadpool.start(worker) 
         logger.info("Thread created for processing files")
+        self.threadpool.start(self.worker)
 
+    def closeEvent(self, event):
+
+        if self.lbl is not None: #Splash screen is there
+            if not type(event) == bool:
+                event.accept()
+            else:
+                sys.exit()
+        else:
+            message = "Are you sure to quit?"
+            if self.worker is not None and True == self.worker.isalive:
+                self.terminate_active_thread = True
+                message = "Thread is busy. "+ message
+                
+            reply = QMessageBox.question(self, 'Message',
+                                        message, QMessageBox.Yes |
+                                        QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                if True == self.terminate_active_thread:
+                    if not type(event) == bool:
+                        event.ignore()
+                    QTimer.singleShot(0,self.splashscreen)
+                    if not type(event) == bool:
+                        event.ignore()
+
+                else:       
+                    if not type(event) == bool:
+                        event.accept()
+                    else:
+                        sys.exit()
+            else:
+                if not type(event) == bool:
+                    event.ignore()
+
+    def file_save(self):
+        fname,fil = QFileDialog.getSaveFileName(self, 'Save File',filter='*.txt')
+        if fname != '':
+            file = open(fname,'w')
+            text = self.textBrowser.toPlainText()
+            file.write(text)
+            file.close()
+            self.statusBar().showMessage("File saved sucessfully: {}".format(fname))
+        else:
+            logger.error(__filename__,"Save file is not successful")
+
+    def GccGraph_thread(self,filename,gccobj):
+        # Pass the function to execute
+        self.worker = JobThread(gccobj.get_Gcc_values,filename)
+        self.worker.signals.finished.connect(self.thread_complete)
+        self.worker.signals.send_data.connect(gccobj.show_data)
+        self.worker.signals.error.connect(gccobj.show_error)
+
+        # Execute
+        logger.info("Thread created for processing files")
+        self.threadpool.start(self.worker)
+
+    def open_GccGraph(self):
+        if self.worker is not None:
+            QMessageBox.critical(self, 'Warning',
+                                     "Thread is busy. Please wait (.*.)", QMessageBox.Ok)
+            return 
+                    
+        graph_widget = QtWidgets.QDialog()
+        fname =os.path.join(self.lineEdit.text(), self.selected_fname)
+        gcc_obj = Ui_GccGraph(fname)
+        gcc_obj.setupUi(graph_widget)
+        self.GccGraph_thread(fname,gcc_obj)
+        graph_widget.exec_()
+        #graph_widget.show()
+        
+
+    def menuContextTree(self, point):
+            # Infos about the node selected.
+            index = self.treeWidget.indexAt(point)
+            if not index.isValid():
+                return
+
+            item = self.treeWidget.itemAt(point)
+            self.selected_fname = item.data(0,Qt.UserRole)  
+            self.menuOptions.exec_(self.treeWidget.mapToGlobal(point))
+
+    def showfilename(self):
+        for item in self.treeWidget.selectedItems():
+            self.statusBar().showMessage( 'selected file: {}'.format(item.data(0,Qt.UserRole)))
+    
+    def splashscreen(self):
+        self.lbl = QLabel('<font color=Red size=16><b> Terminating thread... Please wait for 5 Secs </b></font>')
+        self.lbl.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint|Qt.AlignCenter)
+        self.lbl.show()
+        QTimer.singleShot(5000,self.close)
