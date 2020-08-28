@@ -18,3 +18,4 @@ if __name__ == "__main__":
     app.setWindowIcon(QIcon(scriptDir + os.path.sep + 'res' + os.path.sep + 'index.png'))
     ui.show()
     app.exec_()
+

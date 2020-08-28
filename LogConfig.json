@@ -24,5 +24,12 @@
 		"Regex":"Setting initial system date from TDT of dvb:",
 		"ShowLine":"false"
 	}
+	],
+
+	"FullGC":[
+		{
+			"Regex":"com.mca.memoryprofiling - JAVA HEAP USAGE: MAX: ",
+			"Marker": "Full GC#"
+		}
 	]
 }

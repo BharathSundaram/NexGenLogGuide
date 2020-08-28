@@ -15,10 +15,9 @@ from PyQt5.QtGui import QIcon
 from utils import *
 from PyQt5.QtCore import QThreadPool,Qt,QTimer
 from GccGraph import Ui_GccGraph
+from about import Ui_About
 
 __filename__ = "NextGenLogGuideGui.py"
-__author__ = "Bharath Shanmugasundaram"
-__version__ = "1.0.0"
 
 class Ui_MainWindow(QMainWindow):
     def __init__(self):
@@ -135,8 +134,9 @@ class Ui_MainWindow(QMainWindow):
         #self.menubar.addAction(self.menuOptions.menuAction())
         self.menubar.addAction(self.menuHelp.menuAction())
         logger.debug(__filename__,"setup called")
-        
-        self.setWindowTitle((str ( 'NexGenLogGuide ' +'-' + __version__)))
+
+        initglobals()        
+        self.setWindowTitle((str ( 'NexGenLogGuide ' +'-' + get_version())))
         self.label.setText("List of files")
         self.label_2.setText("Initial log information")
         self.pushButton.setText("Open File")
@@ -184,7 +184,7 @@ class Ui_MainWindow(QMainWindow):
 
         self.read_config_file('LogConfig.json')
         if (self.status == True):
-             self.regex =  get_regex_from_list(self.onliner)
+             self.OnlineRegCount , self.OnlineRegex =  get_regex_from_list(self.onliner)
         else:
             logger.error(__file__,'Failed to read regex')
             self.statusBar().showMessage('Error reading LogConfig.json. Please check')
@@ -208,10 +208,11 @@ class Ui_MainWindow(QMainWindow):
             fsize = os.path.getsize(file_name)
             fsizestr = str(int(fsize/1024)) + ' KB'
             self.treeWidget.clear()
-            QTreeWidgetItem(self.treeWidget, ['1',filename, fsizestr])
+            item = QTreeWidgetItem(self.treeWidget, ['1',filename, fsizestr])
             self.statusBar().showMessage('processing file. Please wait...')
             self.progress.setMaximum(1)
             self.textBrowser.clear()
+            item.setData(0,Qt.UserRole,filename)
             self.create_thread([file_name],[])
         except FileNotFoundError:
             logger.debug(__filename__,'No file selected')
@@ -252,6 +253,7 @@ class Ui_MainWindow(QMainWindow):
         self.actionQuit.triggered.connect(self.closeEvent)
         self.actionSaveReport.triggered.connect(self.file_save)
         self.actionFull_GCC_Graph.triggered.connect(self.open_GccGraph)
+        self.actionAbout.triggered.connect(self.open_about)
         # Connect the contextmenu
         self.treeWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.treeWidget.customContextMenuRequested.connect(self.menuContextTree)
@@ -269,7 +271,7 @@ class Ui_MainWindow(QMainWindow):
             count = count + 1
             fn_send_data.emit(('file',file,count))
             logger.info(file)
-            filecontent = extract_onliner_info(self.regex,file)
+            filecontent = extract_onliner_info(self.OnlineRegCount,self.OnlineRegex,file)
             fn_send_data.emit(('data',file))
             fn_send_data.emit(('data','='*len(file)))
             if(filecontent is not None):
@@ -282,14 +284,16 @@ class Ui_MainWindow(QMainWindow):
         return 'done'
 
     def read_config_file(self,filename):
-        self.status, self.onliner, self.settings = ReadConfigfromJson(filename)
-        logger.info(self.status, self.onliner, self.settings)
+        self.status, self.onliner, self.settings, self.lFullGcc = ReadConfigfromJson(filename)
+        logger.info(self.status, self.onliner, self.settings, self.lFullGcc)
 
     def thread_complete(self):
         print("THREAD COMPLETE!")
-        self.worker.isalive = False
-        self.worker.signals = None
-        self.worker = None
+        
+        if self.worker is not None:
+            self.worker.isalive = False
+            self.worker.signals = None
+            self.worker = None
         self.statusBar().showMessage('Files processing Completed')
 
     def show_data(self,d_tuple):
@@ -302,8 +306,12 @@ class Ui_MainWindow(QMainWindow):
             logger.error("Invalid- Not expected")
 
     def show_error(self,d_tuple):
-        print(d_tuple)
         logger.error(__filename__,d_tuple)
+        QMessageBox.critical(self, 'Error',
+                            "Exception caught:\n{}".format(d_tuple[2], QMessageBox.Ok))
+        
+        
+
 
     def create_thread(self,file_list, log_info_list):
         # Pass the function to execute
@@ -326,20 +334,19 @@ class Ui_MainWindow(QMainWindow):
         else:
             message = "Are you sure to quit?"
             if self.worker is not None and True == self.worker.isalive:
-                self.terminate_active_thread = True
                 message = "Thread is busy. "+ message
                 
             reply = QMessageBox.question(self, 'Message',
                                         message, QMessageBox.Yes |
                                         QMessageBox.No, QMessageBox.No)
             if reply == QMessageBox.Yes:
-                if True == self.terminate_active_thread:
+                if self.worker is not None and True == self.worker.isalive:
+                    self.terminate_active_thread = True
                     if not type(event) == bool:
                         event.ignore()
-                    QTimer.singleShot(0,self.splashscreen)
+                        QTimer.singleShot(0,self.splashscreen)
                     if not type(event) == bool:
                         event.ignore()
-
                 else:       
                     if not type(event) == bool:
                         event.accept()
@@ -378,13 +385,19 @@ class Ui_MainWindow(QMainWindow):
             return 
                     
         graph_widget = QtWidgets.QDialog()
+        print(self.lineEdit.text() ,self.selected_fname)
         fname =os.path.join(self.lineEdit.text(), self.selected_fname)
-        gcc_obj = Ui_GccGraph(fname)
+        gcc_obj = Ui_GccGraph(fname,self.lFullGcc)
         gcc_obj.setupUi(graph_widget)
         self.GccGraph_thread(fname,gcc_obj)
         graph_widget.exec_()
-        #graph_widget.show()
         
+
+    def open_about(self):
+        graph_widget = QtWidgets.QDialog()
+        about_obj = Ui_About()
+        about_obj.setupUi(graph_widget)
+        graph_widget.exec_()
 
     def menuContextTree(self, point):
             # Infos about the node selected.

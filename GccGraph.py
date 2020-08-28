@@ -12,13 +12,18 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 import traceback
 from setup_logger import logger
-
+from pyqtgraph import PlotWidget, plot
+import pyqtgraph as pg
+from time import sleep
+from utils import get_FullGcc_from_list
 __filename__ = "GccGraph"
 
 class Ui_GccGraph(object):
 
-    def __init__ (self,fname):
+    def __init__ (self,fname,lfullGcc):
         self.fname = fname
+        self.lfullGcc = lfullGcc
+        self.showstatusCounter = 0
 
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
@@ -27,73 +32,127 @@ class Ui_GccGraph(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.gridLayout = QtWidgets.QGridLayout()
         self.gridLayout.setObjectName("gridLayout")
-        self.bquit = QtWidgets.QPushButton(Dialog)
-        self.bquit.setObjectName("bquit")
-        self.gridLayout.addWidget(self.bquit, 1, 1, 1, 1)
-        self.pushButton = QtWidgets.QPushButton(Dialog)
-        self.pushButton.setObjectName("pushButton")
-        self.gridLayout.addWidget(self.pushButton, 1, 0, 1, 1)
-        self.graphicsView = QtWidgets.QGraphicsView(Dialog)
+        pg.setConfigOptions(antialias=True)
+        self.graphicsView = pg.PlotWidget(Dialog)
         self.graphicsView.setObjectName("graphicsView")
         self.gridLayout.addWidget(self.graphicsView, 0, 0, 1, 2)
-        self.progressBar = QtWidgets.QProgressBar(Dialog)
-        self.progressBar.setProperty("value", 0)
-        self.progressBar.setObjectName("progressBar")
-        self.gridLayout.addWidget(self.progressBar, 2, 0, 1, 2)
+        self.statusBar = QtWidgets.QStatusBar(Dialog)
+        self.statusBar.setProperty("value", 0)
+        self.statusBar.setObjectName("progressBar")
+        self.gridLayout.addWidget(self.statusBar, 2, 0, 1, 2)
         self.verticalLayout.addLayout(self.gridLayout)
-        self.pushButton.setText("Save as Image")
-        self.bquit.setText("Quit")
         Dialog.setWindowFlag(Qt.WindowMinimizeButtonHint, True)
         Dialog.setWindowFlag(Qt.WindowMaximizeButtonHint, True)
         Dialog.setWindowTitle("FullGccGraph: {}".format(self.fname))
-        self.progressBar.setMaximum(1)
-        self.bquit.clicked.connect(Dialog.accept)
+        self.setuptimer()
         Dialog.show()
-        
 
     def show_data(self,d_tuple):
-        print(d_tuple)
+        #print(d_tuple)
+        if(d_tuple[0]=='plot'):
+            #print(type(d_tuple[1]))
+            self.timer.stop()
+            self.statusBar.showMessage('File processing. please wait...')
+            self.statusBar.showMessage('File processing Completed.')
+            self.showGraph(d_tuple[1],d_tuple[2])
+        elif(d_tuple[0]=='status'):
+            print('Timer started')
+            self.timer.start(250)
+        elif(d_tuple[0]=='plotagain'):
+            self.graphicsView.plot(d_tuple[1],d_tuple[2],symbol='+', name= 'Full GC Invocation Reference', \
+                symbolSize=10,pen=None, symbolBrush=(255, 233, 0))
+            legendLabelStyle = {'color': '#FFF', 'size': '10pt', 'bold': True, 'italic': False}
+            for item in self.legend.items:
+                for single_item in item:
+                    if isinstance(single_item, pg.graphicsItems.LabelItem.LabelItem):
+                        single_item.setText(single_item.text, **legendLabelStyle)
+
 
     def show_error(self,d_tuple):
-        print(d_tuple)
         logger.error(__filename__,d_tuple)
-
+        QMessageBox.critical(self, 'Warning',
+                                    "Thread is busy. Please wait (.*.)", QMessageBox.Ok)
 
 
     def get_Gcc_values(self, filename,fn_send_data):
         print('get_Gcc_values Thread started {}'.format(filename))
-        with open(filename) as fp:
+        status , value_list = get_FullGcc_from_list(self.lfullGcc)
+        print(value_list)
+        if(status is False):
+            raise Exception('LogConfig.json missing information about FullGcc')
+ 
+        with open(filename,'r',errors='ignore') as fp:
             line = fp.readline()
-            cnt = 0
+            cnt = 1
             chc = 0
             freemem_ls = []
             freemem_index = []
-            val = 0
-            valinMb = 0
+            all_freemem_ls = []
+            all_freemem_index = []
+            fn_send_data.emit(('status',[],[]))
             while line:
-                if (line.find('com.mca.memoryprofiling - JAVA HEAP USAGE: MAX: ') != -1): 
+                if (line.find(value_list[0]) != -1): 
                     val = int(line.split(': ')[6].split(',')[0])
-                    valinMb =int(val/1024/1024);
-                if (line.find('WARNING HIGH MEMORY USAGES CHECK OF') != -1): 
-                    break
-                line = fp.readline()
-
-            while line:
-                if ((line.find('com.mca.memoryprofiling - JAVA HEAP USAGE: MAX: ') != -1)):
-                    #print(line) 
-                    valx = int(line.split(': ')[6].split(',')[0])
-                    valinMbx =int(valx/1024/1024);
+                    valinMb =int(val/1024/1024)
+                    #print(val,valinMb)
                     timeval = line.split(' ')[0].split(':')
                     if(True == str(timeval[0]).isdigit()):
                         newtimeinsecs = int(timeval[0]) * 60 + int(timeval[1].split('.')[0])
                         newtimeinsecs = int(newtimeinsecs/60);
-                        #print(timeval,newtimeinsecs)
-                        freemem_ls.append(valinMbx)
-                        freemem_index.append(newtimeinsecs)
-                        cnt += 1
+                        all_freemem_ls.append(valinMb)
+                        all_freemem_index.append(newtimeinsecs)
+                        chc = 1
+                if (line.find(value_list[1]) != -1 and (1 == chc)):
+                    freemem_ls.append(valinMb)
+                    freemem_index.append(newtimeinsecs)
+                    #print(storeline)
+                    #print(valinMb,"---",newtimeinsecs)
+                    cnt += 1
+                    chc = 0
                 line = fp.readline()
+            #print(val,valinMb)
+            #print(freemem_index)
+            #print(freemem_ls)
+            fn_send_data.emit(('plot',all_freemem_index,all_freemem_ls))
+            fn_send_data.emit(('plotagain',freemem_index,freemem_ls))
+    
+    def showGraph(self,minutes,memory):
+        #Add Background colour to white
+        #self.graphicsView.setBackground('w')
 
-        print(val,valinMb)
-        print(freemem_index)
-        print(freemem_ls)
+        self.graphicsView.setAntialiasing(True)
+        # Add Title
+        self.graphicsView.setTitle("Memory usage Graph", color=(41,193,51), size="24pt")
+        # Add Axis Labels
+        styles = {"color": "#29c133", "font-size": "20px"}
+        self.graphicsView.setLabel("left", "Memory Usage (in MB)", **styles)
+        self.graphicsView.setLabel("bottom", "Minutes (m)", **styles)
+        #Add legend
+        self.legend = self.graphicsView.addLegend()
+        #Add grid
+        self.graphicsView.showGrid(x=True, y=True)
+        #Set Range
+        #self.graphicsView.setXRange(0, 10, padding=0)
+        #self.graphicsView.setYRange(20, 55, padding=0)
+
+        pen = pg.mkPen(color=(0, 128, 255),width=3)
+        self.graphicsView.plot(minutes,memory,  symbol=None, pen=pen, symbolBrush=('b'), name='Heap memory at given minute')
+
+    def setuptimer(self):
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.showstatus)
+    
+    def showstatus(self):
+        print('Timer called %d', self.showstatusCounter)
+        if(3 == self.showstatusCounter):
+            self.showstatusCounter = 0
+
+        if(0 == self.showstatusCounter):
+            self.statusBar.showMessage('File processing. please wait.')
+        elif(1 == self.showstatusCounter):
+            self.statusBar.showMessage('File processing. please wait..')
+        elif(2 == self.showstatusCounter):
+            self.statusBar.showMessage('File processing. please wait...')
+
+        self.showstatusCounter = self.showstatusCounter + 1
 
