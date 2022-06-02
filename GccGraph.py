@@ -66,6 +66,15 @@ class Ui_GccGraph(object):
                 for single_item in item:
                     if isinstance(single_item, pg.graphicsItems.LabelItem.LabelItem):
                         single_item.setText(single_item.text, **legendLabelStyle)
+        elif(d_tuple[0]=='minmemory'):
+            rpen = pg.mkPen(color=(255, 99, 71), width=2)
+            self.graphicsView.plot([1,1,1,1],symbol=None, name= 'Lowest memory hit is {} MB'.format(d_tuple[1]), \
+                symbolSize=10,pen=rpen, symbolBrush=(255, 233, 0))
+            legendLabelStyle = {'color': '#FFF', 'size': '10pt', 'bold': True, 'italic': False}
+            for item in self.legend.items:
+                for single_item in item:
+                    if isinstance(single_item, pg.graphicsItems.LabelItem.LabelItem):
+                        single_item.setText(single_item.text, **legendLabelStyle)
 
 
     def show_error(self,d_tuple):
@@ -110,11 +119,12 @@ class Ui_GccGraph(object):
                     cnt += 1
                     chc = 0
                 line = fp.readline()
-            #print(val,valinMb)
-            #print(freemem_index)
-            #print(freemem_ls)
+            print(val,valinMb)
+            print(freemem_index)
+            print(freemem_ls)
             fn_send_data.emit(('plot',all_freemem_index,all_freemem_ls))
             fn_send_data.emit(('plotagain',freemem_index,freemem_ls))
+            fn_send_data.emit(('minmemory', min(freemem_ls)))
     
     def showGraph(self,minutes,memory):
         #Add Background colour to white
@@ -132,11 +142,16 @@ class Ui_GccGraph(object):
         #Add grid
         self.graphicsView.showGrid(x=True, y=True)
         #Set Range
-        #self.graphicsView.setXRange(0, 10, padding=0)
-        #self.graphicsView.setYRange(20, 55, padding=0)
+        #hours = minutes[-1]/60
+        #self.graphicsView.setXRange(0, hours, padding=0)
+        self.graphicsView.setYRange(0, 245, padding=0)
 
         pen = pg.mkPen(color=(0, 128, 255),width=3)
         self.graphicsView.plot(minutes,memory,  symbol=None, pen=pen, symbolBrush=('b'), name='Heap memory at given minute')
+        lowMem = [min(memory)] * max(minutes)
+        #print(lowMem)
+        rpen = pg.mkPen(color=(255,99,71), width=2)
+        self.graphicsView.plot(lowMem, symbol=None, pen=rpen)
 
     def setuptimer(self):
         self.timer = QtCore.QTimer()

@@ -13,12 +13,12 @@ from utils import get_version, get_author
 class Ui_About(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.setFixedSize(445, 207)
+        Dialog.setFixedSize(550, 350)
         self.label = QtWidgets.QLabel(Dialog)
-        self.label.setGeometry(QtCore.QRect(0, 0, 445, 171))
+        self.label.setGeometry(QtCore.QRect(0, 0, 550, 350))
         self.label.setObjectName("label")
         self.pushButton = QtWidgets.QPushButton(Dialog)
-        self.pushButton.setGeometry(QtCore.QRect(370, 180, 71, 23))
+        self.pushButton.setGeometry(QtCore.QRect(450, 320, 71, 23))
         self.pushButton.setObjectName("pushButton")
         #self.label.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
         self.label.setOpenExternalLinks(True)

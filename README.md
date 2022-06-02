@@ -26,4 +26,4 @@ setup_logger.py         - python Logger
 utils.py                - Contains util functionalities for the NextGenLogGuide  
 
 LogConfig.json          - Config file for the NextGenLogGuide
-NextGenLogGuideGui.exe  - This is geneared using pyinstaller, Command used "pyinstaller.exe --onefile -w   NextGenLogGuide.py"
+NextGenLogGuideGui.exe  - This is generated using pyinstaller, Command used "pyinstaller.exe --onefile -w   NextGenLogGuide.py"

@@ -24,7 +24,7 @@ class Ui_MainWindow(QMainWindow):
         super().__init__()
         self.setupUi()    
         self.add_signals()
-      
+     
     def setupUi(self):
         self.setObjectName("MainWindow")
         width,height = get_screen_resolution()
@@ -115,8 +115,11 @@ class Ui_MainWindow(QMainWindow):
         self.actionFull_GCC_Graph.setObjectName("actionFull_GCC_Graph")
         self.actionParse_Log = QtWidgets.QAction()
         self.actionParse_Log.setObjectName("actionParse_Log")
-        self.actionRecentFiles = QtWidgets.QAction()
-        self.actionRecentFiles.setObjectName("actionRecentFiles")
+        self.actionParse_stresslogs = QtWidgets.QAction()
+        self.actionParse_stresslogs.setObjectName("actionParse_stresslogs")
+        self.actionParse_soaklogs = QtWidgets.QAction()
+        self.actionParse_soaklogs.setObjectName("actionParse_soaklogs")
+
         self.actionSaveReport = QtWidgets.QAction()
         self.actionSaveReport.setObjectName("actionSaveReport")
         self.actionQuit = QtWidgets.QAction()
@@ -125,13 +128,16 @@ class Ui_MainWindow(QMainWindow):
         self.menuOpenfile.addAction(self.actionOpenFolder)
         self.menuOpenfile.addAction(self.actionSaveReport)
         self.menuOpenfile.addSeparator()
-        self.menuOpenfile.addAction(self.actionRecentFiles)
+        self.actionRecentFiles = self.menuOpenfile.addMenu("Recent Files") 
+        self.actionRecentFiles.triggered.connect(self.recentFileAction)
         self.menuOpenfile.addAction(self.actionQuit)
         self.menuHelp.addAction(self.actionAbout)
         self.menuOptions.addAction(self.actionFull_GCC_Graph)
         self.menuOptions.addAction(self.actionParse_Log)
+        self.menuOptions.addAction(self.actionParse_stresslogs)
+        self.menuOptions.addAction(self.actionParse_soaklogs)
+        self.menuOptions.addAction(self.actionParse_Log)
         self.menubar.addAction(self.menuOpenfile.menuAction())
-        #self.menubar.addAction(self.menuOptions.menuAction())
         self.menubar.addAction(self.menuHelp.menuAction())
         logger.debug(__filename__,"setup called")
 
@@ -148,8 +154,9 @@ class Ui_MainWindow(QMainWindow):
         self.actionOpenFolder.setText("OpenFolder")
         self.actionAbout.setText("About")
         self.actionFull_GCC_Graph.setText("Full GCC Graph")
+        self.actionParse_stresslogs.setText("Parse stress log")
+        self.actionParse_soaklogs.setText("Parse soak log")
         self.actionParse_Log.setText("Parse Log")
-        self.actionRecentFiles.setText("RecentFiles")
         self.actionSaveReport.setText("SaveReport")
         self.actionQuit.setText("Quit")
 
@@ -192,10 +199,16 @@ class Ui_MainWindow(QMainWindow):
         self.threadpool = QThreadPool()
         logger.info("Available with maximum %d threads" % self.threadpool.maxThreadCount())
 
+
         #Initialze the class varibles
         self.terminate_active_thread = False
         self.worker = None
         self.lbl = None
+        self.recentFileList = []
+        self.recentFileListCount = 0
+
+        #Read recent file list 
+        self.loadRecentFilestoMenu()
 
     def OpenFileDialog(self):
         try :
@@ -203,17 +216,7 @@ class Ui_MainWindow(QMainWindow):
                                 'c:\\', "NextGen Log files (*.log)")
             
             logger.debug(__filename__,'file name :',file_name)
-            path, filename = os.path.split(file_name)
-            self.lineEdit.setText(os.path.dirname(file_name))
-            fsize = os.path.getsize(file_name)
-            fsizestr = str(int(fsize/1024)) + ' KB'
-            self.treeWidget.clear()
-            item = QTreeWidgetItem(self.treeWidget, ['1',filename, fsizestr])
-            self.statusBar().showMessage('processing file. Please wait...')
-            self.progress.setMaximum(1)
-            self.textBrowser.clear()
-            item.setData(0,Qt.UserRole,filename)
-            self.create_thread([file_name],[])
+            self.ProcessFile(file_name)
         except FileNotFoundError:
             logger.debug(__filename__,'No file selected')
 
@@ -221,26 +224,9 @@ class Ui_MainWindow(QMainWindow):
         try :
             folder_name = QFileDialog.getExistingDirectory(self, "Select NextGenLog Directory")
             logger.debug(__filename__,folder_name)
-            self.lineEdit.setText(str(folder_name))
-
             if folder_name =='':
                 return
-            
-            self.textBrowser.clear()
-            self.statusBar().showMessage('Fetching file from folder. Please wait...')
-            files_list = get_files_from_dir(folder_name,".log")
-            self.treeWidget.clear()
-            count = 0
-            for file in files_list:
-                fsize = os.path.getsize(file)
-                fsizestr = str(int(fsize/1024)) + ' KB'
-                path, filename = os.path.split(file)
-                count = count + 1
-                item = QTreeWidgetItem(self.treeWidget, [str(count),filename, fsizestr])
-                item.setData(0,Qt.UserRole,file)
-            self.statusBar().showMessage(f"Fetching file from folder completed. Total file(s): {len(files_list)}")
-            self.progress.setMaximum(count)
-            self.create_thread(files_list,[])
+            self.ProcessFolder(folder_name)
         except FileNotFoundError:
             logger.debug(__filename__,'No folder selected')
 
@@ -311,8 +297,6 @@ class Ui_MainWindow(QMainWindow):
                             "Exception caught:\n{}".format(d_tuple[2], QMessageBox.Ok))
         
         
-
-
     def create_thread(self,file_list, log_info_list):
         # Pass the function to execute
         self.worker = JobThread(self.process_log_files,file_list)
@@ -340,6 +324,7 @@ class Ui_MainWindow(QMainWindow):
                                         message, QMessageBox.Yes |
                                         QMessageBox.No, QMessageBox.No)
             if reply == QMessageBox.Yes:
+                writeRecentFilestoFile(self.recentFileList)
                 if self.worker is not None and True == self.worker.isalive:
                     self.terminate_active_thread = True
                     if not type(event) == bool:
@@ -411,10 +396,80 @@ class Ui_MainWindow(QMainWindow):
 
     def showfilename(self):
         for item in self.treeWidget.selectedItems():
-            self.statusBar().showMessage( 'selected file: {}'.format(item.data(0,Qt.UserRole)))
+            self.statusBar().showMessage( '{}'.format(item.data(0,Qt.UserRole)))
     
     def splashscreen(self):
         self.lbl = QLabel('<font color=Red size=16><b> Terminating thread... Please wait for 5 Secs </b></font>')
         self.lbl.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint|Qt.AlignCenter)
         self.lbl.show()
         QTimer.singleShot(5000,self.close)
+
+    def add_recentFile(self,filename):
+        maxcount = get_recent_file_size()
+        if len(self.recentFileList) < maxcount: #self.recentFileList - Zero based
+            submenuobj = self.actionRecentFiles.addAction(filename)
+            self.recentFileList.append(submenuobj)
+            self.recentFileListCount = self.recentFileListCount + 1
+        elif self.recentFileListCount > (maxcount-1):
+            menuaction = self.recentFileList[self.recentFileListCount % maxcount]
+            menuaction.setText(filename)
+            self.recentFileListCount = self.recentFileListCount + 1
+
+    def recentFileAction(self,data):
+        print(data.text())
+        path = data.text()
+        if os.path.isdir(path):  
+            self.ProcessFolder(path,True)      
+        elif os.path.isfile(path):
+            self.ProcessFile(path,True)
+
+    def ProcessFile(self,file_name, isfrom_menu = False):
+        path, filename = os.path.split(file_name)
+        self.lineEdit.setText(os.path.dirname(file_name))
+        fsize = os.path.getsize(file_name)
+        fsizestr = str(int(fsize/1024)) + ' KB'
+        self.treeWidget.clear()
+        item = QTreeWidgetItem(self.treeWidget, ['1',filename, fsizestr])
+        self.statusBar().showMessage('processing file. Please wait...')
+        self.progress.setMaximum(1)
+        self.textBrowser.clear()
+        item.setData(0,Qt.UserRole,filename)
+        if  False == isfrom_menu:
+            self.add_recentFile(file_name)
+        self.create_thread([file_name],[])
+
+    def ProcessFolder(self,folder_name,isfrom_menu = False):
+
+        self.lineEdit.setText(str(folder_name))
+        files_list = get_files_from_dir(folder_name,".log")
+        if(len(files_list) == 0):
+            QMessageBox.critical(self, 'Error',
+                        "No files found with extension '.log'", QMessageBox.Ok)
+
+            self.statusBar().showMessage('Please select valid folder.')
+            return
+
+        if  False == isfrom_menu:
+            self.add_recentFile(folder_name)
+
+        self.textBrowser.clear()
+        self.statusBar().showMessage('Fetching file from folder. Please wait...')
+        self.treeWidget.clear()
+        count = 0
+        for file in files_list:
+            fsize = os.path.getsize(file)
+            fsizestr = str(int(fsize/1024)) + ' KB'
+            path, filename = os.path.split(file)
+            count = count + 1
+            item = QTreeWidgetItem(self.treeWidget, [str(count),filename, fsizestr])
+            item.setData(0,Qt.UserRole,file)
+        self.statusBar().showMessage(f"Fetching file from folder completed. Total file(s): {len(files_list)}")
+        self.progress.setMaximum(count)
+        self.create_thread(files_list,[])
+
+    def loadRecentFilestoMenu(self):
+        filelist = LoadRecentFilestoFile()
+        logger.debug(__filename__,len(filelist),filelist)
+        for fname in filelist:
+            self.add_recentFile(fname)
+            
